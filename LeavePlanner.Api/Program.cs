@@ -14,14 +14,14 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// === Auto-Migration beim Start ===
+// === DB: Migration beim Start (für alle Environments) ===
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LeavePlannerDbContext>();
     await db.Database.MigrateAsync();
 }
 
-// Swagger nur in Development
+// === Dev: Swagger + Seeding ===
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -29,18 +29,20 @@ if (app.Environment.IsDevelopment())
 
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<LeavePlannerDbContext>();
-    await db.Database.MigrateAsync();
-    DbSeeder.Seed(db);
+    DbSeeder.Seed(db); // idempotent (füllt nur, wenn leer)
 }
-
-// HTTPS nur außerhalb von Development
-if (!app.Environment.IsDevelopment())
+else
 {
+    // Prod: HTTPS Redirect & HSTS
     app.UseHttpsRedirection();
     app.UseHsts();
 }
 
-// Health (sichtbar in Swagger)
+// --- Debug/Health Endpoints ---
+app.MapGet("/debug/env", (IHostEnvironment env) =>
+    Results.Ok(new { environment = env.EnvironmentName })
+).WithOpenApi();
+
 app.MapGet("/health/db", async (LeavePlannerDbContext db) =>
 {
     var canConnect = await db.Database.CanConnectAsync();
@@ -49,6 +51,14 @@ app.MapGet("/health/db", async (LeavePlannerDbContext db) =>
 })
 .WithName("HealthDb")
 .WithOpenApi();
+
+app.MapGet("/debug/employees", async (LeavePlannerDbContext db) =>
+    await db.Employees.Select(e => new { e.Id, e.Name, e.JobTitle }).ToListAsync()
+).WithOpenApi();
+
+app.MapGet("/debug/migrations", async (LeavePlannerDbContext db) =>
+    Results.Ok(await db.Database.GetAppliedMigrationsAsync())
+).WithOpenApi();
 
 // Beispiel-Endpoint aus Template
 var summaries = new[]
