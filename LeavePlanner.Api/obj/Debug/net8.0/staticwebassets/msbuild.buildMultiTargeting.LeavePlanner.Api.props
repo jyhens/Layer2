@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\LeavePlanner.Api.props" />
+</Project>
