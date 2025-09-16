@@ -1,7 +1,17 @@
 using LeavePlanner.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Cors;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string DevCors = "DevCors";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(DevCors, policy =>
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
 
 // EF Core + SQLite
 builder.Services.AddDbContext<LeavePlannerDbContext>(options =>
@@ -14,22 +24,27 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// === DB: Migration beim Start (für alle Environments) ===
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors(DevCors);
+}
+
+// DB: Migration beim Start (für alle Environments)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LeavePlannerDbContext>();
     await db.Database.MigrateAsync();
 }
 
-// === Dev: Swagger + Seeding ===
+// Dev: Swagger + Seeding
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<LeavePlannerDbContext>();
-    DbSeeder.Seed(db); // idempotent (füllt nur, wenn leer)
+    using var scopeDev = app.Services.CreateScope();
+    var devDb = scopeDev.ServiceProvider.GetRequiredService<LeavePlannerDbContext>();
+    DbSeeder.Seed(devDb); // idempotent (füllt nur, wenn leer)
 }
 else
 {
@@ -38,7 +53,7 @@ else
     app.UseHsts();
 }
 
-// --- Debug/Health Endpoints ---
+// Debug/Health Endpoints
 app.MapGet("/debug/env", (IHostEnvironment env) =>
     Results.Ok(new { environment = env.EnvironmentName })
 ).WithOpenApi();
@@ -60,7 +75,7 @@ app.MapGet("/debug/migrations", async (LeavePlannerDbContext db) =>
     Results.Ok(await db.Database.GetAppliedMigrationsAsync())
 ).WithOpenApi();
 
-// Beispiel-Endpoint aus Template
+// Template Stuff
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"

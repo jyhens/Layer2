@@ -17,7 +17,6 @@ C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\LeavePlann
 C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\LeavePlanner.Api.csproj.CoreCompileInputs.cache
 C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\LeavePlanner.Api.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\LeavePlanner.Api.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\LeavePlanner.Api.sourcelink.json
 C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\Pc\Desktop\X\leave-planner\LeavePlanner.Api\obj\Debug\net8.0\staticwebassets\msbuild.LeavePlanner.Api.Microsoft.AspNetCore.StaticWebAssets.props

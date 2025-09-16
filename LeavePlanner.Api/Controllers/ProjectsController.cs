@@ -12,12 +12,14 @@ public class ProjectsController : ControllerBase
     private readonly LeavePlannerDbContext _db;
     public ProjectsController(LeavePlannerDbContext db) => _db = db;
 
+    // GET: api/projects
     [HttpGet]
     public async Task<ActionResult<IEnumerable<object>>> GetAll()
     {
         var list = await _db.Projects
             .Include(p => p.Customer)
-            .Select(p => new {
+            .Select(p => new
+            {
                 p.Id,
                 p.Name,
                 Customer = p.Customer != null ? new { p.Customer.Id, p.Customer.Name } : null,
@@ -25,13 +27,18 @@ public class ProjectsController : ControllerBase
                 p.EndDate
             })
             .ToListAsync();
+
         return Ok(list);
     }
 
+    // GET: api/projects/{id}
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<object>> GetById(Guid id)
     {
-        var p = await _db.Projects.Include(p => p.Customer).FirstOrDefaultAsync(p => p.Id == id);
+        var p = await _db.Projects
+            .Include(p => p.Customer)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
         return p is null
             ? NotFound()
             : Ok(new { p.Id, p.Name, CustomerId = p.CustomerId, p.StartDate, p.EndDate });
@@ -39,12 +46,17 @@ public class ProjectsController : ControllerBase
 
     public record ProjectCreateDto(string Name, Guid CustomerId, DateOnly StartDate, DateOnly? EndDate);
 
+    // POST: api/projects
     [HttpPost]
     public async Task<ActionResult<object>> Create(ProjectCreateDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name is required.");
+
         var existsCustomer = await _db.Customers.AnyAsync(c => c.Id == dto.CustomerId);
         if (!existsCustomer) return BadRequest("Customer does not exist.");
+
+        if (dto.EndDate is not null && dto.EndDate < dto.StartDate)
+            return BadRequest("EndDate must be null or >= StartDate.");
 
         var p = new Project
         {
@@ -56,11 +68,14 @@ public class ProjectsController : ControllerBase
 
         _db.Projects.Add(p);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = p.Id }, new { p.Id, p.Name, p.CustomerId, p.StartDate, p.EndDate });
+
+        return CreatedAtAction(nameof(GetById), new { id = p.Id },
+            new { p.Id, p.Name, p.CustomerId, p.StartDate, p.EndDate });
     }
 
     public record ProjectUpdateDto(string Name, Guid CustomerId, DateOnly StartDate, DateOnly? EndDate);
 
+    // PUT: api/projects/{id}
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, ProjectUpdateDto dto)
     {
@@ -68,8 +83,12 @@ public class ProjectsController : ControllerBase
         if (p is null) return NotFound();
 
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name is required.");
+
         var existsCustomer = await _db.Customers.AnyAsync(c => c.Id == dto.CustomerId);
         if (!existsCustomer) return BadRequest("Customer does not exist.");
+
+        if (dto.EndDate is not null && dto.EndDate < dto.StartDate)
+            return BadRequest("EndDate must be null or >= StartDate.");
 
         p.Name = dto.Name.Trim();
         p.CustomerId = dto.CustomerId;
@@ -83,22 +102,21 @@ public class ProjectsController : ControllerBase
         }
         catch (DbUpdateException ex)
         {
-            // falls du Check-Constraint für Perioden gesetzt hast
             return Problem(title: "Update failed", detail: ex.Message, statusCode: StatusCodes.Status409Conflict);
         }
     }
 
+    // DELETE: api/projects/{id}
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var p = await _db.Projects.FindAsync(id);
         if (p is null) return NotFound();
+
         _db.Projects.Remove(p);
         await _db.SaveChangesAsync();
         return NoContent();
     }
-
-    // ---- Assign Employee to Project ----
     public record AssignDto(Guid EmployeeId);
 
     // POST: api/projects/{projectId}/assignments
@@ -121,6 +139,43 @@ public class ProjectsController : ControllerBase
             EmployeeId = dto.EmployeeId
         });
 
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // GET: api/projects/{projectId}/assignments
+    [HttpGet("{projectId:guid}/assignments")]
+    public async Task<ActionResult<IEnumerable<object>>> ListAssignments(Guid projectId)
+    {
+        var projectExists = await _db.Projects.AnyAsync(p => p.Id == projectId);
+        if (!projectExists) return NotFound("Project not found.");
+
+        var list = await _db.ProjectAssignments
+            .Where(pa => pa.ProjectId == projectId)
+            .Include(pa => pa.Employee)
+            .Select(pa => new
+            {
+                employeeId = pa.EmployeeId,
+                employeeName = pa.Employee!.Name
+            })
+            .ToListAsync();
+
+        return Ok(list);
+    }
+
+    // DELETE: api/projects/{projectId}/assignments/{employeeId}
+    [HttpDelete("{projectId:guid}/assignments/{employeeId:guid}")]
+    public async Task<IActionResult> UnassignEmployee(Guid projectId, Guid employeeId)
+    {
+        var projectExists = await _db.Projects.AnyAsync(p => p.Id == projectId);
+        if (!projectExists) return NotFound("Project not found.");
+
+        var assignment = await _db.ProjectAssignments
+            .FirstOrDefaultAsync(pa => pa.ProjectId == projectId && pa.EmployeeId == employeeId);
+
+        if (assignment is null) return NotFound("Assignment not found.");
+
+        _db.ProjectAssignments.Remove(assignment);
         await _db.SaveChangesAsync();
         return NoContent();
     }
