@@ -17,7 +17,7 @@ public class EmployeesController : ControllerBase
     public async Task<ActionResult<IEnumerable<object>>> GetAll()
     {
         var list = await _db.Employees
-            .Select(e => new { e.Id, e.Name, e.JobTitle })
+            .Select(e => new { e.Id, e.Name, e.JobTitle, e.Role })
             .ToListAsync();
         return Ok(list);
     }
@@ -27,7 +27,7 @@ public class EmployeesController : ControllerBase
     public async Task<ActionResult<object>> GetById(Guid id)
     {
         var e = await _db.Employees.FindAsync(id);
-        return e is null ? NotFound() : Ok(new { e.Id, e.Name, e.JobTitle });
+        return e is null ? NotFound() : Ok(new { e.Id, e.Name, e.JobTitle, e.Role });
     }
 
     public record EmployeeCreateDto(string Name, string? JobTitle);
@@ -40,7 +40,7 @@ public class EmployeesController : ControllerBase
         var e = new Employee { Name = dto.Name.Trim(), JobTitle = dto.JobTitle?.Trim() };
         _db.Employees.Add(e);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = e.Id }, new { e.Id, e.Name, e.JobTitle });
+        return CreatedAtAction(nameof(GetById), new { id = e.Id }, new { e.Id, e.Name, e.JobTitle, e.Role });
     }
 
     public record EmployeeUpdateDto(string Name, string? JobTitle);

@@ -22,6 +22,7 @@ public class ProjectsController : ControllerBase
             {
                 p.Id,
                 p.Name,
+                CustomerId = p.CustomerId, // wichtig fürs Frontend
                 Customer = p.Customer != null ? new { p.Customer.Id, p.Customer.Name } : null,
                 p.StartDate,
                 p.EndDate
@@ -95,15 +96,8 @@ public class ProjectsController : ControllerBase
         p.StartDate = dto.StartDate;
         p.EndDate = dto.EndDate;
 
-        try
-        {
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
-        catch (DbUpdateException ex)
-        {
-            return Problem(title: "Update failed", detail: ex.Message, statusCode: StatusCodes.Status409Conflict);
-        }
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
     // DELETE: api/projects/{id}
@@ -117,6 +111,7 @@ public class ProjectsController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
     public record AssignDto(Guid EmployeeId);
 
     // POST: api/projects/{projectId}/assignments

@@ -14,4 +14,9 @@ public class LeaveRequest
 
     // Standard = Requested
     public LeaveStatus Status { get; set; } = LeaveStatus.Requested;
+
+    public Guid? DecisionByEmployeeId { get; set; }      // Wer hat entschieden (Approver/Admin)
+    public DateTimeOffset? DecisionAt { get; set; }      // Wann wurde entschieden (UTC)
+    public string? DecisionComment { get; set; }         // Optionaler Kommentar beim Reject
+
 }

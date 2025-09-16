@@ -8,8 +8,8 @@ public class Employee
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = null!;
     public string? JobTitle { get; set; }
-
-    // Navigation (später für EF Core hilfreich)
+    public UserRole Role { get; set; } = UserRole.Employee;
     public List<ProjectAssignment> ProjectAssignments { get; set; } = new();
     public List<LeaveRequest> LeaveRequests { get; set; } = new();
 }
+

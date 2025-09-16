@@ -1,0 +1,5 @@
+{
+  "name": "Leave Planner",
+  "description": "An internal web app to request and approve single-day leaves. Users can be an Employee, Approver, or Admin, with different permissions for requesting and managing leave applications.",
+  "requestFramePermissions": []
+}

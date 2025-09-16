@@ -1,13 +1,60 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
+    <title>Leave Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#2563EB',
+              surface: {
+                DEFAULT: '#FFFFFF',
+                subtle: '#F6F8FB',
+              },
+              'text-primary': '#0F172A',
+              success: '#16A34A',
+              warning: '#B45309',
+              danger: '#DC2626',
+              border: '#E2E8F0',
+            },
+            spacing: {
+              '1': '4px',
+              '2': '8px',
+              '3': '12px',
+              '4': '16px',
+              '5': '20px',
+              '6': '24px',
+            },
+            fontSize: {
+              'xs': '0.75rem',    // 12px
+              'sm': '0.8125rem', // 13px
+              'base': '1rem',      // 16px
+              'lg': '1.125rem',   // 18px
+              'xl': '1.375rem',   // 22px
+              '2xl': '1.75rem',   // 28px
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-surface-subtle text-text-primary">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

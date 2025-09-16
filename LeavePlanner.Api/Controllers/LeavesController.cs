@@ -52,14 +52,16 @@ public class LeavesController : ControllerBase
             : new LeaveDto(l.Id, l.EmployeeId, l.Date, l.Status);
     }
 
-    // POST: api/leaves  (Beantragen) 
+    // POST: api/leaves bei Beantragung nur gegen Approved anderer prüfen
     [HttpPost]
     public async Task<ActionResult<LeaveWithConflictsDto>> Create(LeaveCreateDto dto)
     {
         if (dto.EmployeeId == Guid.Empty) return BadRequest("EmployeeId is required.");
+
         var employeeExists = await _db.Employees.AsNoTracking().AnyAsync(e => e.Id == dto.EmployeeId);
         if (!employeeExists) return BadRequest("Employee does not exist.");
 
+        // Ein Leave pro Mitarbeiter+Tag
         var duplicate = await _db.LeaveRequests.AsNoTracking()
             .AnyAsync(l => l.EmployeeId == dto.EmployeeId && l.Date == dto.Date);
         if (duplicate) return Conflict("Leave request for this employee and date already exists.");
@@ -78,9 +80,11 @@ public class LeavesController : ControllerBase
         }
         catch (DbUpdateException ex)
         {
+            // Sicherheitsnetz für Unique-Index (EmployeeId, Date)
             return Problem(title: "Create failed", detail: ex.Message, statusCode: StatusCodes.Status409Conflict);
         }
 
+        // Konflikthinweise: bei Beantragung nur Approved anderer
         var conflictHints = await ComputeConflictHints(dto.EmployeeId, dto.Date, includeRequested: false);
 
         var result = new LeaveWithConflictsDto(
@@ -91,22 +95,33 @@ public class LeavesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, result);
     }
 
-    // POST: api/leaves/{id}/approve  
+    // POST: api/leaves/{id}/approve
     [HttpPost("{id:guid}/approve")]
     public async Task<ActionResult<LeaveWithConflictsDto>> Approve(Guid id)
     {
+        var current = await GetCurrentEmployeeAsync();
+        if (current is null) return Unauthorized("Provide X-Employee-Id header.");
+        if (current.Role != UserRole.Approver && current.Role != UserRole.Admin)
+            return Forbid("Approver or Admin role required.");
+
         var entity = await _db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (entity is null) return NotFound("Leave not found.");
+
+        if (entity.EmployeeId == current.Id)
+            return Forbid("You cannot approve your own leave.");
 
         if (entity.Status == LeaveStatus.Approved)
             return Conflict("Leave is already approved.");
         if (entity.Status == LeaveStatus.Rejected)
             return Conflict("Leave has been rejected and cannot be approved.");
 
-        // Konflikte inkl. Requested anderer (erweiterte Regel bei Genehmigung)
+        // Konflikte inkl. Requested anderer
         var conflictHints = await ComputeConflictHints(entity.EmployeeId, entity.Date, includeRequested: true);
 
         entity.Status = LeaveStatus.Approved;
+        entity.DecisionByEmployeeId = current.Id;
+        entity.DecisionAt = DateTimeOffset.UtcNow;
+
         await _db.SaveChangesAsync();
 
         var result = new LeaveWithConflictsDto(
@@ -119,10 +134,18 @@ public class LeavesController : ControllerBase
 
     // POST: api/leaves/{id}/reject
     [HttpPost("{id:guid}/reject")]
-    public async Task<ActionResult<LeaveDto>> Reject(Guid id)
+    public async Task<ActionResult<LeaveDto>> Reject(Guid id, [FromBody] string? comment = null)
     {
+        var current = await GetCurrentEmployeeAsync();
+        if (current is null) return Unauthorized("Provide X-Employee-Id header.");
+        if (current.Role != UserRole.Approver && current.Role != UserRole.Admin)
+            return Forbid("Approver or Admin role required.");
+
         var entity = await _db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (entity is null) return NotFound("Leave not found.");
+
+        if (entity.EmployeeId == current.Id)
+            return Forbid("You cannot reject your own leave.");
 
         if (entity.Status == LeaveStatus.Rejected)
             return Conflict("Leave is already rejected.");
@@ -130,9 +153,22 @@ public class LeavesController : ControllerBase
             return Conflict("Approved leave cannot be rejected.");
 
         entity.Status = LeaveStatus.Rejected;
+        entity.DecisionByEmployeeId = current.Id;
+        entity.DecisionAt = DateTimeOffset.UtcNow;
+        entity.DecisionComment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
+
         await _db.SaveChangesAsync();
 
         return Ok(new LeaveDto(entity.Id, entity.EmployeeId, entity.Date, entity.Status));
+    }
+
+    // --- Helpers ---
+
+    private async Task<Employee?> GetCurrentEmployeeAsync()
+    {
+        if (!Request.Headers.TryGetValue("X-Employee-Id", out var values)) return null;
+        if (!Guid.TryParse(values.FirstOrDefault(), out var id)) return null;
+        return await _db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
     }
 
     private async Task<List<ConflictHint>> ComputeConflictHints(Guid requesterEmployeeId, DateOnly date, bool includeRequested)

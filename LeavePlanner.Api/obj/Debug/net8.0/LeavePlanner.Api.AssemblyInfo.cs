@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LeavePlanner.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1e37407f9d93d39349f28337d23faa65314890bf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1dd4ab9b717cedece567401ebd2064b7596af45f")]
 [assembly: System.Reflection.AssemblyProductAttribute("LeavePlanner.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LeavePlanner.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
